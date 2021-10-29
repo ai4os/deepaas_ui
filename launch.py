@@ -1,8 +1,31 @@
+# -*- coding: utf-8 -*-
+
+# Copyright 2021 Spanish National Research Council (CSIC)
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+
+import base64
+import inspect
 import json
+from pathlib import Path
+import tempfile
 
 import click
 import gradio as gr
 import requests
+
+import ui_utils
 
 
 @click.command()
@@ -14,55 +37,134 @@ import requests
               help='URL of the deployed UI')
 def main(api_url, ui_port):
 
-#     # Configuration
-#     api_url = 'http://0.0.0.0:5000/'
-#     ui_port = 8000 
-
     # Parse api inference inputs/outputs
     sess = requests.Session()
     r = sess.get(api_url + 'swagger.json')
     specs = r.json()
     pred_paths = [p for p in specs['paths'].keys() if p.endswith('predict/')]
 
-    p = pred_paths[0]  # FIXME: we are only doing this for the first model found
+    p = pred_paths[0]  # FIXME: we are only interfacing the first model found
+    print(f'Parsing {Path(p).parent}')
+    metadata = specs['paths'][f'{Path(p).parent}/']
     api_inp = specs['paths'][p]['post']['parameters']
     api_out = specs['paths'][p]['post']['produces']
 
     # Transform api data types to Gradio data types
-    names = [i['name'] for i in api_inp]
-    gr_inp = []
-    for i in api_inp:
-        if 'enum' in i.keys():
-            tmp = gr.inputs.Dropdown(choices=i['enum'],
-                                     label=i['name'])  # could also be checkbox
-        gr_inp.append(tmp)
+    ## Input types
+    gr_inp, inp_names, inp_types, media_types = ui_utils.api2gr_inputs(api_inp)
 
-    outtypes_map = {'application/json': 'json'}
-    gr_out = [outtypes_map[i] for i in api_out]
+    ## Output types: multiple ouput return
+    if api_out == ['application/json']:
+        try:
+            struct = specs['definitions']['ModelPredictionResponse']['properties']
+        except:
+            raise Exception("""
+            You should define a proper response schema for handling the model output.
+            See the docs [1].
+            [1] https://docs.deep-hybrid-datacloud.eu/projects/deepaas/en/stable/user/v2-api.html?highlight=schema#deepaas.model.v2.base.BaseModel.schema
+            """)
+        gr_out = ui_utils.api2gr_outputs(struct)
+
+    ## Output types: single output return # TODO
+    # elif api_out == ['image/png']:
+    #     pass
+
+    else:
+        raise Exception('DEEPaaS API output not supported for rendering.')
 
 
     def api_call(*args, **kwargs):
 
         headers = {'accept': api_out[0]}
-        params = dict(zip(names, args))
+        params = dict(zip(inp_names, args))
+        files = {}
+
+        # Format some args
+        for k, v in params.copy().items():
+            if inp_types[k] == 'integer':
+                params[k] = int(v)
+            elif inp_types[k] in ['array']:
+                if isinstance(v, str):
+                    params[k] = json.loads(f'[{v}]')
+            elif inp_types[k] in ['file']:
+                media = params.pop(k)
+                if media_types[k] == 'video':
+                    path = media
+                    raise Exception('Video input is disabled.')
+                    """
+                    FIXME: There is a very weird bug with video.
+                    The script sometimes hangs at the requests.post() without ever making it to predict().
+                    But sometimes it does. Same code, same video files, no changes. Very weird.
+                    """
+                else:
+                    path = media.name
+    #             files[k] = path  # this worked only for images, but not for audio/video
+                files[k] = open(path, 'rb')
 
         r = sess.post(api_url + p, 
                       headers=headers,
                       params=params,
+                      files=files,
                       verify=False)
-        r = r.content.decode("utf-8")  # FIXME: this probably has to be adapted for non-json returns
-        return r
+        rc = r.content.decode("utf-8")  # FIXME: this probably has to be adapted for non-json returns
+
+        # FIXME: Error should probably be shown in frontend
+        # Keep an eye on: https://github.com/gradio-app/gradio/issues/204
+        if r.status_code != 200:
+            raise Exception(f'HTML {r.status_code} eror: {rc}')
+
+        # Reorder in Gradio's expected order and format some outputs
+        rc = json.loads(rc)
+        rout = []
+        for arg in gr_out:
+            label = arg.label
+            
+            # Handle classification outputs
+            if label == 'classification scores':
+                rout.append(dict(zip(rc['labels'],
+                                     rc['probabilities'])
+                                )
+                           )
+            
+            # Process media files
+            elif isinstance(arg, (gr.outputs.Image,
+                                  gr.outputs.Audio,
+                                  gr.outputs.Video)):
+                media = rc[label].encode('utf-8')  # bytes
+                media = base64.b64decode(media)  # bytes
+                with tempfile.NamedTemporaryFile(delete=False) as fp:
+                    fp.write(media)
+                media = fp.name
+                rout.append(media)
+
+            else:
+                rout.append(rc[label])
+
+        return rout
+
+
+    # Get model metadata
+    r = sess.get(f'{api_url}/{Path(p).parent}/')
+    metadata = r.json()
 
     # Launch Gradio interface
     iface = gr.Interface(
         fn=api_call, 
         inputs=gr_inp,
         outputs=gr_out,
+        title=metadata.get('name', ''),
+        description=inspect.cleandoc(metadata.get('description', '')),
+        article=ui_utils.generate_footer(metadata),
+        theme='grass',
         server_name="0.0.0.0",
         server_port=ui_port,
     )
 
-    iface.launch(debug=True)  #FIXME: remove debug for production
+    iface.launch(
+        inline=False,
+        inbrowser=True,
+        debug=False,  #FIXME: remove debug for production
+    )
 
 
 if __name__ == '__main__':
