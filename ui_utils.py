@@ -99,6 +99,7 @@ def api2gr_outputs(struct):
             continue
 
         if v['type'] in ['string', 'boolean']:
+
             # Check if it is media files (encoded in base64)
             desc = v.get('description', '').lower()
             if 'image' in desc:

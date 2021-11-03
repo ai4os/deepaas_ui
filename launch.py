@@ -90,12 +90,6 @@ def main(api_url, ui_port):
                 media = params.pop(k)
                 if media_types[k] == 'video':
                     path = media
-                    raise Exception('Video input is disabled.')
-                    """
-                    FIXME: There is a very weird bug with video.
-                    The script sometimes hangs at the requests.post() without ever making it to predict().
-                    But sometimes it does. Same code, same video files, no changes. Very weird.
-                    """
                 else:
                     path = media.name
     #             files[k] = path  # this worked only for images, but not for audio/video
@@ -132,7 +126,8 @@ def main(api_url, ui_port):
                                   gr.outputs.Video)):
                 media = rc[label].encode('utf-8')  # bytes
                 media = base64.b64decode(media)  # bytes
-                with tempfile.NamedTemporaryFile(delete=False) as fp:
+                suffix = '.mp4' if isinstance(arg, gr.outputs.Video) else None
+                with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as fp:
                     fp.write(media)
                 media = fp.name
                 rout.append(media)
