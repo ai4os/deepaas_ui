@@ -14,6 +14,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+"""
+We use aiohttp instead of requests to avoid adding additional dependencies
+to deepaas.
+"""
 
 import base64
 import inspect
@@ -21,9 +25,10 @@ import json
 from pathlib import Path
 import tempfile
 
+import aiohttp
+import asyncio
 import click
 import gradio as gr
-import requests
 
 import ui_utils
 
@@ -38,9 +43,16 @@ import ui_utils
 def main(api_url, ui_port):
 
     # Parse api inference inputs/outputs
-    sess = requests.Session()
-    r = sess.get(api_url + 'swagger.json')
-    specs = r.json()
+    sess = aiohttp.ClientSession()
+
+    async def getspecs():
+        async with sess.get(api_url + 'swagger.json') as r:
+            specs = await r.json()
+        return specs
+
+    loop = asyncio.get_event_loop()
+    specs = loop.run_until_complete(getspecs())
+
     pred_paths = [p for p in specs['paths'].keys() if p.endswith('predict/')]
 
     p = pred_paths[0]  # FIXME: we are only interfacing the first model found
@@ -82,6 +94,8 @@ def main(api_url, ui_port):
         for k, v in params.copy().items():
             if inp_types[k] == 'integer':
                 params[k] = int(v)
+            if inp_types[k] == 'boolean':   # aiohttp does not accept bools: https://github.com/aio-libs/aiohttp/issues/4874
+                params[k] = str(v)
             elif inp_types[k] in ['array']:
                 if isinstance(v, str):
                     params[k] = json.loads(f'[{v}]')
@@ -92,19 +106,27 @@ def main(api_url, ui_port):
                 else:
                     path = media.name
     #             files[k] = path  # this worked only for images, but not for audio/video
-                files[k] = open(path, 'rb')
+                files[k] = open(path, 'rb').read()
 
-        r = sess.post(api_url + p, 
-                      headers=headers,
-                      params=params,
-                      files=files,
-                      verify=False)
-        rc = r.content.decode("utf-8")  # FIXME: this probably has to be adapted for non-json returns
+
+        async def postpredict():
+            async with aiohttp.ClientSession() as sess:
+                async with sess.post(api_url + p,
+                                     headers=headers,
+                                     params=params,
+                                     data=files,) as r:
+                    rc = await r.content.read()
+            rc = rc.decode("utf-8")  # FIXME: this probably has to be adapted for non-json returns
+            return r, rc
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        r, rc = loop.run_until_complete(postpredict())
+        loop.close()
 
         # FIXME: Error should probably be shown in frontend
         # Keep an eye on: https://github.com/gradio-app/gradio/issues/204
-        if r.status_code != 200:
-            raise Exception(f'HTML {r.status_code} eror: {rc}')
+        if r.status != 200:
+            raise Exception(f'HTML {r.status} eror: {rc}')
 
         # Reorder in Gradio's expected order and format some outputs
         rc = json.loads(rc)
@@ -136,10 +158,13 @@ def main(api_url, ui_port):
 
         return rout
 
-
     # Get model metadata
-    r = sess.get(f'{api_url}/{Path(p).parent}/')
-    metadata = r.json()
+    async def getmetadata():
+        async with sess.get(f'{api_url}/{Path(p).parent}/') as r:
+            metadata = await r.json()
+        return metadata
+    loop = asyncio.get_event_loop()
+    metadata = loop.run_until_complete(getmetadata())
 
     # Launch Gradio interface
     iface = gr.Interface(
