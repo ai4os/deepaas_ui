@@ -45,7 +45,6 @@ def main(api_url, ui_port):
 
     p = pred_paths[0]  # FIXME: we are only interfacing the first model found
     print(f'Parsing {Path(p).parent}')
-    metadata = specs['paths'][f'{Path(p).parent}/']
     api_inp = specs['paths'][p]['post']['parameters']
     api_out = specs['paths'][p]['post']['produces']
 
