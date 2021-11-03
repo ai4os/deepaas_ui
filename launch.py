@@ -106,7 +106,7 @@ def main(api_url, ui_port):
                 else:
                     path = media.name
     #             files[k] = path  # this worked only for images, but not for audio/video
-                files[k] = open(path, 'rb').read()
+                files[k] = open(path, 'rb').read()  # aiohttp neads .read()
 
 
         async def postpredict():
