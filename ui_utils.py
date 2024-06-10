@@ -50,10 +50,10 @@ def api2gr_inputs(api_inp):
             tmp = gr.inputs.Checkbox(default=v.get('default', None),
                                      label=k)
         elif v['type'] in ['string']:
-            tmp = gr.inputs.Textbox(default=v.get('default', None),                     
+            tmp = gr.inputs.Textbox(default=v.get('default', None),
                                     label=k)
         elif v['type'] in ['array']:
-            tmp = gr.inputs.Textbox(default=v.get('default', None),                     
+            tmp = gr.inputs.Textbox(default=v.get('default', None),
                                     label=k)
         elif v['type'] in ['file']:
             desc = v.get('description', '').lower()
@@ -83,11 +83,11 @@ def api2gr_inputs(api_inp):
         else:
             raise Exception(f"UI does not support some of the input data types: `{k}` :: {v['type']}")
         gr_inp.append(tmp)
-        
-    return gr_inp, inp_names, inp_types, media_types
-        
 
-        
+    return gr_inp, inp_names, inp_types, media_types
+
+
+
 def api2gr_outputs(struct):
     """
     Transform DEEPaaS webargs to Gradio outputs.
@@ -136,20 +136,19 @@ def api2gr_outputs(struct):
                                type='confidences',
                                label='classification scores')
         gr_out.append(tmp)
-            
+
     return gr_out
-        
-        
+
+
 def generate_footer(metadata):
     footer = f"""
         <link href="https://use.fontawesome.com/releases/v5.13.0/css/all.css" rel="stylesheet">
-        <i class="fas fa-home"></i> [Homepage]({metadata.get('url', '')}) <br>
         <b>Author</b>: {metadata.get('author', '')} <br>
         <b>License</b>: {metadata.get('license', '')} <br>
         <b>Summary</b>: {metadata.get('summary', '')} <br>
         <a href="https://deep-hybrid-datacloud.eu/">
           <div align="center">
-            <img src="https://marketplace.deep-hybrid-datacloud.eu/images/logo-deep.png" alt="logo" width="200"/>
+            <img src="https://ai4eosc.eu/wp-content/uploads/sites/10/2022/09/horizontal-transparent.png" alt="logo" width="200"/>
           </div>
         </a>
     """
