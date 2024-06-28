@@ -1,6 +1,6 @@
 # This is the file that is ran from Nomad, when we launch a "try-it" job from PAPI
 
-git clone https://github.com/ai4os/deepaas_ui
+git clone -b nomad https://github.com/ai4os/deepaas_ui
 cd deepaas_ui
 pip install -r requirements.txt
 nohup deep-start --deepaas &
