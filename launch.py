@@ -94,7 +94,7 @@ def main(api_url, ui_port):
     #             files[k] = path  # this worked only for images, but not for audio/video
                 files[k] = open(path, 'rb')
 
-        r = sess.post(api_url + p, 
+        r = sess.post(api_url + p,
                       headers=headers,
                       params=params,
                       files=files,
@@ -111,14 +111,14 @@ def main(api_url, ui_port):
         rout = []
         for arg in gr_out:
             label = arg.label
-            
+
             # Handle classification outputs
             if label == 'classification scores':
                 rout.append(dict(zip(rc['labels'],
                                      rc['probabilities'])
                                 )
                            )
-            
+
             # Process media files
             elif isinstance(arg, (gr.outputs.Image,
                                   gr.outputs.Audio,
@@ -130,6 +130,10 @@ def main(api_url, ui_port):
                     fp.write(media)
                 media = fp.name
                 rout.append(media)
+
+            elif isinstance(arg, gr.outputs.Textbox) and arg.type=='str':
+                # see webargs.Field param
+                rout.append(str(rc[label]))
 
             else:
                 rout.append(rc[label])
@@ -143,7 +147,7 @@ def main(api_url, ui_port):
 
     # Launch Gradio interface
     iface = gr.Interface(
-        fn=api_call, 
+        fn=api_call,
         inputs=gr_inp,
         outputs=gr_out,
         title=metadata.get('name', ''),
