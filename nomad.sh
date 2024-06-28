@@ -16,5 +16,5 @@ pip install -r requirements.txt --ignore-installed blinker
 nohup deep-start --deepaas &
 #  Let deepaas start
 sleep 10
-python launch.py --api_url http://0.0.0.0:5000/ --ui_port 8000
+python launch.py --api_url http://0.0.0.0:5000/ --ui_port 8888
 # TODO: add command to kill after 10 minutes
