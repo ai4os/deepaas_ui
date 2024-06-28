@@ -95,10 +95,14 @@ def api2gr_outputs(struct):
     gr_out = []
     for k, v in struct.items():
 
-        if k in ['labels', 'probabilities']:  # FIXME: remove in the future, see below
+        if 'type' not in v:  # webargs param is "Field" for example, when output is dict of dicts
+            tmp = gr.outputs.Textbox(type='str',
+                                     label=k)
+
+        elif k in ['labels', 'probabilities']:  # FIXME: remove in the future, see below
             continue
 
-        if v['type'] in ['string', 'boolean']:
+        elif v['type'] in ['string', 'boolean']:
 
             # Check if it is media files (encoded in base64)
             desc = v.get('description', '').lower()
@@ -126,6 +130,7 @@ def api2gr_outputs(struct):
             tmp = gr.outputs.JSON(label=k)
         else:
             raise Exception(f"UI does not support some of the output data types: {k} [{v['type']}]")
+
         gr_out.append(tmp)
 
     # Interpret 'labels'/'predictions' keys as classification
