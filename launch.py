@@ -48,15 +48,23 @@ def main(api_url, ui_port):
     api_inp = specs['paths'][p]['post']['parameters']
     api_out = specs['paths'][p]['post']['produces']
 
-    # Transform api data types to Gradio data types
-    ## Input types
+    # TODO: right now we only keep the first response type because we generate the
+    # Gradio interface before knowing what will be the response type selected by
+    # the user
+    # In the future, multiple types might be addressed with Gradio tabs
+    api_out = api_out[0]
+
+    # Transform deepaas inputs to Gradio
     gr_inp, inp_names, inp_types, media_types = ui_utils.api2gr_inputs(api_inp)
 
-    ## Output types: multiple ouput return
-    if api_out == ['application/json']:
+    # Transform deepaas outputs to Gradio
+    if api_out == 'application/json':
+
         try:
+            # Check if the model has a defined schema
             struct = specs['definitions']['ModelPredictionResponse']['properties']
-        except:
+        except Exception:
+            # TODO: instead of raising error if no schema, return everything in a text field
             raise Exception("""
             You should define a proper response schema for handling the model output.
             See the docs [1].
@@ -64,8 +72,8 @@ def main(api_url, ui_port):
             """)
         gr_out = ui_utils.api2gr_outputs(struct)
 
-    ## Output types: single output return # TODO
-    # elif api_out == ['image/png']:
+    #TODO: allow returning non-josn responses
+    # elif api_out == 'image/png':
     #     pass
 
     else:
@@ -104,7 +112,7 @@ def main(api_url, ui_port):
         # FIXME: Error should probably be shown in frontend
         # Keep an eye on: https://github.com/gradio-app/gradio/issues/204
         if r.status_code != 200:
-            raise Exception(f'HTML {r.status_code} eror: {rc}')
+            raise Exception(f'HTML {r.status_code} error: {rc}')
 
         # Reorder in Gradio's expected order and format some outputs
         rc = json.loads(rc)

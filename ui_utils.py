@@ -28,7 +28,11 @@ def api2gr_inputs(api_inp):
     Transform DEEPaaS webargs to Gradio inputs.
     """
     inp_names = [i['name'] for i in api_inp]
-    inp_types = {i['name']: i['type'] for i in api_inp}
+    inp_types = {i['name']: i.get('type', 'string') for i in api_inp}
+    # we default to string because sometimes modules are not using inputs correctly
+    # eg. YOLOV8: classes param
+
+
     media_types = {}
     gr_inp = []
     for k, v in zip(inp_names, api_inp):
