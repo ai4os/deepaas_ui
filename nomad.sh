@@ -1,3 +1,4 @@
+#!/bin/bash
 # This is the file that is ran from Nomad, when we launch a "try-it" job from PAPI
 
 DURATION="${DURATION:-10m}"
@@ -20,4 +21,5 @@ nohup deep-start --deepaas &
 # sleep 10s to let `deepaas` start before launching the UI
 sleep 10
 # Use timeout to automatically kill the job after a given duration
-timeout --preserve-status ${DURATION} python launch.py --api_url http://0.0.0.0:5000/ --ui_port ${UI_PORT}
+# We capture the timeout exit code (124) to return 0 instead, so that the task does not restart (job_type=batch)
+timeout ${DURATION} python launch.py --api_url http://0.0.0.0:5000/ --ui_port ${UI_PORT} || ( [[ $? -eq 124 ]]
