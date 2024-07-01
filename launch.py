@@ -20,6 +20,7 @@ import inspect
 import json
 from pathlib import Path
 import tempfile
+import warnings
 
 import click
 import gradio as gr
@@ -65,14 +66,16 @@ def main(api_url, ui_port):
         try:
             # Check if the model has a defined schema
             struct = specs['definitions']['ModelPredictionResponse']['properties']
+            gr_out = ui_utils.api2gr_outputs(struct)
+            schema = True
         except Exception:
-            # TODO: instead of raising error if no schema, return everything in a text field
-            raise Exception("""
-            You should define a proper response schema for handling the model output.
-            See the docs [1].
+            warnings.warn("""
+            You should define a proper response schema [1] for handling the model output.
+            Fallback: return raw JSON.
             [1] https://docs.deep-hybrid-datacloud.eu/projects/deepaas/en/stable/user/v2-api.html?highlight=schema#deepaas.model.v2.base.BaseModel.schema
             """)
-        gr_out = ui_utils.api2gr_outputs(struct)
+            schema = False
+            gr_out = [gr.outputs.JSON()]
 
     elif api_out.startswith('image/'):
         gr_out = [gr.outputs.Image(type='file')]
@@ -131,37 +134,44 @@ def main(api_url, ui_port):
             if r.status_code != 200:
                 raise Exception(f'HTML {r.status_code} error: {rc}')
 
-            # Reorder in Gradio's expected order and format some outputs
             rc = json.loads(rc)
-            rout = []
-            for arg in gr_out:
-                label = arg.label
 
-                # Handle classification outputs
-                if label == 'classification scores':
-                    rout.append(dict(zip(rc['labels'],
-                                        rc['probabilities'])
-                                    )
-                            )
+            # If schema is provided, reorder outputs in Gradio's expected order
+            # and format outputs (if needed)
+            if schema:
+                rout = []
+                for arg in gr_out:
+                    label = arg.label
 
-                # Process media files
-                elif isinstance(arg, (gr.outputs.Image,
-                                    gr.outputs.Audio,
-                                    gr.outputs.Video)):
-                    media = rc[label].encode('utf-8')  # bytes
-                    media = base64.b64decode(media)  # bytes
-                    suffix = '.mp4' if isinstance(arg, gr.outputs.Video) else None
-                    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as fp:
-                        fp.write(media)
-                    media = fp.name
-                    rout.append(media)
+                    # Handle classification outputs
+                    if label == 'classification scores':
+                        rout.append(dict(zip(rc['labels'],
+                                            rc['probabilities'])
+                                        )
+                                )
 
-                elif isinstance(arg, gr.outputs.Textbox) and arg.type=='str':
-                    # see webargs.Field param
-                    rout.append(str(rc[label]))
+                    # Process media files
+                    elif isinstance(arg, (gr.outputs.Image,
+                                        gr.outputs.Audio,
+                                        gr.outputs.Video)):
+                        media = rc[label].encode('utf-8')  # bytes
+                        media = base64.b64decode(media)  # bytes
+                        suffix = '.mp4' if isinstance(arg, gr.outputs.Video) else None
+                        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as fp:
+                            fp.write(media)
+                        media = fp.name
+                        rout.append(media)
 
-                else:
-                    rout.append(rc[label])
+                    elif isinstance(arg, gr.outputs.Textbox) and arg.type=='str':
+                        # see webargs.Field param
+                        rout.append(str(rc[label]))
+
+                    else:
+                        rout.append(rc[label])
+
+            else:
+                # If no schema provided return everything as a JSON
+                rout = rc['predictions']
 
         else:
             # Process non-json responses: save to file and return path
