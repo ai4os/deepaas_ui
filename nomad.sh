@@ -1,8 +1,10 @@
 # This is the file that is ran from Nomad, when we launch a "try-it" job from PAPI
 
+DURATION="${DURATION:-10m}"
+UI_PORT="${UI_PORT:-8888}"
+
 git clone -b nomad https://github.com/ai4os/deepaas_ui
 cd deepaas_ui
-pip install -r requirements.txt --ignore-installed blinker
 
 #  Defaut installation leads to:
 # ```
@@ -12,9 +14,10 @@ pip install -r requirements.txt --ignore-installed blinker
 # ```
 # So we need to add the ignore flag.
 # https://stackoverflow.com/questions/53807511/pip-cannot-uninstall-package-it-is-a-distutils-installed-project
+pip install -r requirements.txt --ignore-installed blinker
 
 nohup deep-start --deepaas &
-#  Let deepaas start
+# sleep 10s to let `deepaas` start before launching the UI
 sleep 10
-python launch.py --api_url http://0.0.0.0:5000/ --ui_port 8888
-# TODO: add command to kill after 10 minutes
+# Use timeout to automatically kill the job after a given duration
+timeout --preserve-status ${DURATION} python launch.py --api_url http://0.0.0.0:5000/ --ui_port ${UI_PORT}
