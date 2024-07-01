@@ -19,6 +19,7 @@ File where we moved some functions to declutter launch.py
 """
 
 import inspect
+import re
 
 import gradio as gr
 
@@ -32,10 +33,14 @@ def api2gr_inputs(api_inp):
     # we default to string because sometimes modules are not using inputs correctly
     # eg. YOLOV8: classes param
 
-
     media_types = {}
     gr_inp = []
     for k, v in zip(inp_names, api_inp):
+
+        if k == 'accept':
+            # do not show the accept MIME in the Gradio inputs
+            continue
+
         if 'enum' in v.keys():
             tmp = gr.inputs.Dropdown(choices=v['enum'],
                                      default=v.get('default', None),
@@ -163,3 +168,13 @@ def generate_footer(metadata):
     """
     footer = inspect.cleandoc(footer)
     return footer
+
+
+def find_filetype(content_type):
+    # Regex pattern to match the filetype after the slash, but not if it's a wildcard (*)
+    pattern = r'/([^/*]+)$'
+    match = re.search(pattern, content_type)
+    if match:
+        return match.group(1)
+    else:
+        return None

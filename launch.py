@@ -53,6 +53,8 @@ def main(api_url, ui_port):
     # the user
     # In the future, multiple types might be addressed with Gradio tabs
     api_out = api_out[0]
+    # api_out = api_out[1]
+    print(f"Processing MIME: {api_out}")
 
     # Transform deepaas inputs to Gradio
     gr_inp, inp_names, inp_types, media_types = ui_utils.api2gr_inputs(api_inp)
@@ -72,17 +74,25 @@ def main(api_url, ui_port):
             """)
         gr_out = ui_utils.api2gr_outputs(struct)
 
-    #TODO: allow returning non-josn responses
-    # elif api_out == 'image/png':
-    #     pass
+    elif api_out.startswith('image/'):
+        gr_out = [gr.outputs.Image(type='file')]
+
+    elif api_out.startswith('audio/'):
+        gr_out = [gr.outputs.Audio(type='file')]
+
+    elif api_out.startswith('video/'):
+        gr_out = [gr.outputs.Video(type='mp4')]
+
+    elif api_out.startswith('application/'):
+        gr_out = gr.outputs.File()
 
     else:
-        raise Exception('DEEPaaS API output not supported for rendering.')
+        raise Exception(f'DEEPaaS API output MIME not supported for Gradio rendering: {api_out}')
 
 
     def api_call(*args, **kwargs):
 
-        headers = {'accept': api_out[0]}
+        headers = {'accept': api_out}
         params = dict(zip(inp_names, args))
         files = {}
 
@@ -99,52 +109,66 @@ def main(api_url, ui_port):
                     path = media
                 else:
                     path = media.name
-    #             files[k] = path  # this worked only for images, but not for audio/video
+                # files[k] = path  # this worked only for images, but not for audio/video
                 files[k] = open(path, 'rb')
+
+        # We also send accept as a param in case the module does different post
+        # processing based on this parameter.
+        # Accept is hardcoded because the user does not get to choose it.
+        params['accept'] = api_out
 
         r = sess.post(api_url + p,
                       headers=headers,
                       params=params,
                       files=files,
                       verify=False)
-        rc = r.content.decode("utf-8")  # FIXME: this probably has to be adapted for non-json returns
 
-        # FIXME: Error should probably be shown in frontend
-        # Keep an eye on: https://github.com/gradio-app/gradio/issues/204
-        if r.status_code != 200:
-            raise Exception(f'HTML {r.status_code} error: {rc}')
+        if api_out == 'application/json':
+            rc = r.content.decode("utf-8")
 
-        # Reorder in Gradio's expected order and format some outputs
-        rc = json.loads(rc)
-        rout = []
-        for arg in gr_out:
-            label = arg.label
+            # FIXME: Error should probably be shown in frontend
+            # Keep an eye on: https://github.com/gradio-app/gradio/issues/204
+            if r.status_code != 200:
+                raise Exception(f'HTML {r.status_code} error: {rc}')
 
-            # Handle classification outputs
-            if label == 'classification scores':
-                rout.append(dict(zip(rc['labels'],
-                                     rc['probabilities'])
-                                )
-                           )
+            # Reorder in Gradio's expected order and format some outputs
+            rc = json.loads(rc)
+            rout = []
+            for arg in gr_out:
+                label = arg.label
 
-            # Process media files
-            elif isinstance(arg, (gr.outputs.Image,
-                                  gr.outputs.Audio,
-                                  gr.outputs.Video)):
-                media = rc[label].encode('utf-8')  # bytes
-                media = base64.b64decode(media)  # bytes
-                suffix = '.mp4' if isinstance(arg, gr.outputs.Video) else None
-                with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as fp:
-                    fp.write(media)
-                media = fp.name
-                rout.append(media)
+                # Handle classification outputs
+                if label == 'classification scores':
+                    rout.append(dict(zip(rc['labels'],
+                                        rc['probabilities'])
+                                    )
+                            )
 
-            elif isinstance(arg, gr.outputs.Textbox) and arg.type=='str':
-                # see webargs.Field param
-                rout.append(str(rc[label]))
+                # Process media files
+                elif isinstance(arg, (gr.outputs.Image,
+                                    gr.outputs.Audio,
+                                    gr.outputs.Video)):
+                    media = rc[label].encode('utf-8')  # bytes
+                    media = base64.b64decode(media)  # bytes
+                    suffix = '.mp4' if isinstance(arg, gr.outputs.Video) else None
+                    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as fp:
+                        fp.write(media)
+                    media = fp.name
+                    rout.append(media)
 
-            else:
-                rout.append(rc[label])
+                elif isinstance(arg, gr.outputs.Textbox) and arg.type=='str':
+                    # see webargs.Field param
+                    rout.append(str(rc[label]))
+
+                else:
+                    rout.append(rc[label])
+
+        else:
+            # Process non-json responses: save to file and return path
+            ftype = ui_utils.find_filetype(api_out)
+            with tempfile.NamedTemporaryFile(suffix=f".{ftype}", delete=False) as fp:
+                fp.write(r.content)
+            rout = fp.name
 
         return rout
 
