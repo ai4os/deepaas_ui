@@ -22,4 +22,5 @@ nohup deep-start --deepaas &
 sleep 10
 # Use timeout to automatically kill the job after a given duration
 # We capture the timeout exit code (124) to return 0 instead, so that the task does not restart (job_type=batch)
+echo "Launching Gradio UI ..."
 timeout ${DURATION} python launch.py --api_url http://0.0.0.0:5000/ --ui_port ${UI_PORT} || [[ $? -eq 124 ]]
