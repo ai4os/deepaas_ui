@@ -14,13 +14,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-
-import base64
 import inspect
-import json
 from pathlib import Path
-import tempfile
 import warnings
+import functools
 
 import click
 import gradio as gr
@@ -46,164 +43,102 @@ def main(api_url, ui_port):
 
     p = pred_paths[0]  # FIXME: we are only interfacing the first model found
     print(f'Parsing {Path(p).parent}')
+
+    # Retrieve DEEPaaS input params for predict()
     api_inp = specs['paths'][p]['post']['parameters']
-    api_out = specs['paths'][p]['post']['produces']
+    for i in api_inp:
+        # We default type to string because sometimes modules are not using inputs
+        # correctly (eg. YOLOV8: "classes" param)
+        i['type'] = i.get('type', 'string')
 
-    # TODO: right now we only keep the first response type because we generate the
-    # Gradio interface before knowing what will be the response type selected by
-    # the user
-    # In the future, multiple types might be addressed with Gradio tabs
-    api_out = api_out[0]
-    # api_out = api_out[1]
-    print(f"Processing MIME: {api_out}")
+    # Create a Gradio tab for each MIME type
+    interfaces = []
+    mimes = specs['paths'][p]['post']['produces']
+    for mime in mimes:
 
-    # Transform deepaas inputs to Gradio
-    gr_inp, inp_names, inp_types, media_types = ui_utils.api2gr_inputs(api_inp)
+        # Ignore default mime "*/*"
+        if mime == '*/*':
+            continue
+        print(f"Processing MIME: {mime}")
 
-    # Transform deepaas outputs to Gradio
-    if api_out == 'application/json':
+        # Transform deepaas inputs to Gradio
+        gr_inp = ui_utils.api2gr_inputs(api_inp)
 
-        try:
-            # Check if the model has a defined schema
-            struct = specs['definitions']['ModelPredictionResponse']['properties']
-            gr_out = ui_utils.api2gr_outputs(struct)
-            schema = True
-        except Exception:
-            warnings.warn("""
-            You should define a proper response schema [1] for handling the model output.
-            Fallback: return raw JSON.
-            [1] https://docs.deep-hybrid-datacloud.eu/projects/deepaas/en/stable/user/v2-api.html?highlight=schema#deepaas.model.v2.base.BaseModel.schema
-            """)
-            schema = False
-            gr_out = [gr.outputs.JSON()]
+        # Transform deepaas outputs to Gradio
+        schema = False
+        if mime == 'application/json':
+            try:
+                # Check if the model has a defined schema
+                api_out = specs['definitions']['ModelPredictionResponse']['properties']
+                gr_out = ui_utils.api2gr_outputs(api_out)
+                schema = True
+            except Exception:
+                warnings.warn("""
+                    You should define a proper response schema [1] for handling the model output.
+                    Fallback: return raw JSON.
+                    [1] https://docs.deep-hybrid-datacloud.eu/projects/deepaas/en/stable/user/v2-api.html?highlight=schema#deepaas.model.v2.base.BaseModel.schema
+                    """)
+                gr_out = gr.JSON()
 
-    elif api_out.startswith('image/'):
-        gr_out = [gr.outputs.Image(type='file')]
+        elif mime.startswith('image/'):
+            gr_out = gr.Image(type='filepath')
 
-    elif api_out.startswith('audio/'):
-        gr_out = [gr.outputs.Audio(type='file')]
+        elif mime.startswith('audio/'):
+            gr_out = gr.Audio(type='filepath')
 
-    elif api_out.startswith('video/'):
-        gr_out = [gr.outputs.Video(type='mp4')]
+        elif mime.startswith('video/'):
+            gr_out = gr.Video()
 
-    elif api_out.startswith('application/'):
-        gr_out = gr.outputs.File()
-
-    else:
-        raise Exception(f'DEEPaaS API output MIME not supported for Gradio rendering: {api_out}')
-
-
-    def api_call(*args, **kwargs):
-
-        headers = {'accept': api_out}
-        params = dict(zip(inp_names, args))
-        files = {}
-
-        # Format some args
-        for k, v in params.copy().items():
-            if inp_types[k] == 'integer':
-                params[k] = int(v)
-            elif inp_types[k] in ['array']:
-                if isinstance(v, str):
-                    params[k] = json.loads(f'[{v}]')
-            elif inp_types[k] in ['file']:
-                media = params.pop(k)
-                if media_types[k] == 'video':
-                    path = media
-                else:
-                    path = media.name
-                # files[k] = path  # this worked only for images, but not for audio/video
-                files[k] = open(path, 'rb')
-
-        # We also send accept as a param in case the module does different post
-        # processing based on this parameter.
-        # Accept is hardcoded because the user does not get to choose it.
-        params['accept'] = api_out
-
-        r = sess.post(api_url + p,
-                      headers=headers,
-                      params=params,
-                      files=files,
-                      verify=False)
-
-        if api_out == 'application/json':
-            rc = r.content.decode("utf-8")
-
-            # FIXME: Error should probably be shown in frontend
-            # Keep an eye on: https://github.com/gradio-app/gradio/issues/204
-            if r.status_code != 200:
-                raise Exception(f'HTML {r.status_code} error: {rc}')
-
-            rc = json.loads(rc)
-
-            # If schema is provided, reorder outputs in Gradio's expected order
-            # and format outputs (if needed)
-            if schema:
-                rout = []
-                for arg in gr_out:
-                    label = arg.label
-
-                    # Handle classification outputs
-                    if label == 'classification scores':
-                        rout.append(dict(zip(rc['labels'],
-                                            rc['probabilities'])
-                                        )
-                                )
-
-                    # Process media files
-                    elif isinstance(arg, (gr.outputs.Image,
-                                        gr.outputs.Audio,
-                                        gr.outputs.Video)):
-                        media = rc[label].encode('utf-8')  # bytes
-                        media = base64.b64decode(media)  # bytes
-                        suffix = '.mp4' if isinstance(arg, gr.outputs.Video) else None
-                        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as fp:
-                            fp.write(media)
-                        media = fp.name
-                        rout.append(media)
-
-                    elif isinstance(arg, gr.outputs.Textbox) and arg.type=='str':
-                        # see webargs.Field param
-                        rout.append(str(rc[label]))
-
-                    else:
-                        rout.append(rc[label])
-
-            else:
-                # If no schema provided return everything as a JSON
-                rout = rc['predictions']
+        elif mime.startswith('application/'):
+            gr_out = gr.File()
 
         else:
-            # Process non-json responses: save to file and return path
-            ftype = ui_utils.find_filetype(api_out)
-            with tempfile.NamedTemporaryFile(suffix=f".{ftype}", delete=False) as fp:
-                fp.write(r.content)
-            rout = fp.name
+            raise Exception(f'DEEPaaS API output MIME not supported for Gradio rendering: {mime}')
 
-        return rout
+        # Create an api call with non-user parameter pre-filled
+        api_call = functools.partial(
+            ui_utils.api_call,
+            api_inp=api_inp,
+            gr_out=gr_out,
+            url='/'.join(s.strip('/') for s in [api_url, p]),
+            mime=mime,
+            schema=schema,
+            )
 
+        # Get model metadata
+        r = sess.get(f'{api_url}/{Path(p).parent}/')
+        metadata = r.json()
 
-    # Get model metadata
-    r = sess.get(f'{api_url}/{Path(p).parent}/')
-    metadata = r.json()
+        # Launch Gradio interface
+        interface = gr.Interface(
+            fn=api_call,
+            inputs=gr_inp,
+            outputs=gr_out,
+            title=metadata.get('name', ''),
+            description=inspect.cleandoc(metadata.get('description', '')),
+            article=ui_utils.generate_footer(metadata),
+            theme=gr.themes.Default(
+                primary_hue=gr.themes.colors.cyan,
+                ),
+            css=".ai4eosc-logo {border-radius: 10px;}",
+            )
 
-    # Launch Gradio interface
-    iface = gr.Interface(
-        fn=api_call,
-        inputs=gr_inp,
-        outputs=gr_out,
-        title=metadata.get('name', ''),
-        description=inspect.cleandoc(metadata.get('description', '')),
-        article=ui_utils.generate_footer(metadata),
-        theme='grass',
-        server_name="0.0.0.0",
-        server_port=ui_port,
-    )
+        interfaces.append(interface)
 
-    iface.launch(
+    # If more than one MIME type is present, create a tabbed interface
+    if len(interfaces) > 1:
+        interface = gr.TabbedInterface(
+            interface_list = interfaces,
+            tab_names=mimes,
+        )
+
+    interface.launch(
         inline=False,
         inbrowser=True,
-        debug=False,  #FIXME: remove debug for production
+        server_name="0.0.0.0",
+        server_port=ui_port,
+        show_error = True,
+        debug=False,
     )
 
 

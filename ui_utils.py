@@ -14,129 +14,155 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-"""
-File where we moved some functions to declutter launch.py
-"""
-
+import base64
 import inspect
+import json
 import re
+import requests
+import tempfile
+import warnings
 
 import gradio as gr
+
+
+sess = requests.Session()
 
 
 def api2gr_inputs(api_inp):
     """
     Transform DEEPaaS webargs to Gradio inputs.
     """
-    inp_names = [i['name'] for i in api_inp]
-    inp_types = {i['name']: i.get('type', 'string') for i in api_inp}
-    # we default to string because sometimes modules are not using inputs correctly
-    # eg. YOLOV8: classes param
-
-    media_types = {}
     gr_inp = []
-    for k, v in zip(inp_names, api_inp):
+    for i in api_inp:
 
-        if k == 'accept':
-            # do not show the accept MIME in the Gradio inputs
+        if i['name'] == 'accept':
+            # do not show the "accept" MIME param in the Gradio interface
             continue
 
-        if 'enum' in v.keys():
-            tmp = gr.inputs.Dropdown(choices=v['enum'],
-                                     default=v.get('default', None),
-                                     label=k)  # could also be gr.inputs.Radio()
-        elif v['type'] in ['integer', 'number']:
-            if (v['type'] == 'integer') and {'minimum', 'maximum'}.issubset(v.keys()):
-                tmp = gr.inputs.Slider(default=v.get('default', None),
-                                       minimum=v.get('minimum', None),
-                                       maximum=v.get('maximum', None),
-                                       step=1,
-                                       label=k)
+        if 'enum' in i.keys():  # could also be gr.Radio()
+            tmp = gr.Dropdown(
+                choices=i['enum'],
+                value=i.get('default', None),
+                label=i['name'],
+                )
+        elif i['type'] in ['integer', 'number']:
+            if (i['type'] == 'integer') and {'minimum', 'maximum'}.issubset(i.keys()):
+                tmp = gr.Slider(
+                    value=i.get('default', None),
+                    minimum=i.get('minimum', None),
+                    maximum=i.get('maximum', None),
+                    step=1,
+                    label=i['name'],
+                    )
             else:
-                tmp = gr.inputs.Number(default=v.get('default', None),
-                                       label=k)
-        elif v['type'] in ['boolean']:
-            tmp = gr.inputs.Checkbox(default=v.get('default', None),
-                                     label=k)
-        elif v['type'] in ['string']:
-            tmp = gr.inputs.Textbox(default=v.get('default', None),
-                                    label=k)
-        elif v['type'] in ['array']:
-            tmp = gr.inputs.Textbox(default=v.get('default', None),
-                                    label=k)
-        elif v['type'] in ['file']:
-            desc = v.get('description', '').lower()
+                tmp = gr.Number(
+                    value=i.get('default', None),
+                    label=i['name'],
+                    )
+        elif i['type'] in ['boolean']:
+            tmp = gr.Checkbox(
+                value=i.get('default', None),
+                label=i['name'],
+                )
+        elif i['type'] in ['string']:
+            tmp = gr.Textbox(
+                value=i.get('default', None),
+                label=i['name'],
+                )
+        elif i['type'] in ['array']:
+            tmp = gr.Textbox(
+                value=i.get('default', None),
+                label=i['name'],
+                )
+        elif i['type'] == 'file':
+            desc = i.get('description', '').lower()
             if 'image' in desc:
-                media_types[k] = 'image'
-                tmp = gr.inputs.Image(optional= not v['required'],
-                                      type='file',
-                                      label=k)
+                tmp = gr.Image(
+                    type='filepath',
+                    label=i['name'],
+                    )
             elif 'audio' in desc:
-                media_types[k] = 'audio'
-                tmp = gr.inputs.Audio(source='upload',  # maybe sometimes it makes more sense to use 'microphone'
-                                      optional= not v['required'],
-                                      type='file',
-                                      label=k)
+                tmp = gr.Audio(
+                    type='filepath',
+                    label=i['name'],
+                    )
             elif 'video' in desc:
-                media_types[k] = 'video'
-                tmp = gr.inputs.Video(optional= not v['required'],
-                                      type=None,
-                                      label=k)
+                tmp = gr.Video(
+                    label=i['name'],
+                    )
             else:
-                raise Exception(
+                # If media type not found, allow uploading as a generic file
+                warnings.warn(
                     f"""
-                    You should include the media type in the `{k}` arg description.
+                    You should include the media type in the `{i['name']}` arg description for nice Gradio rendering.
                     Supported media types: image, video, audio.
                     """)
+                tmp = gr.File(
+                    label=i['name'],
+                    )
 
         else:
-            raise Exception(f"UI does not support some of the input data types: `{k}` :: {v['type']}")
+            raise Exception(f"UI does not support some of the input data types: `{i['name']}` :: {i['type']}")
         gr_inp.append(tmp)
 
-    return gr_inp, inp_names, inp_types, media_types
+    return gr_inp
 
 
-
-def api2gr_outputs(struct):
+def api2gr_outputs(api_out):
     """
     Transform DEEPaaS webargs to Gradio outputs.
     """
     gr_out = []
-    for k, v in struct.items():
+    for k, v in api_out.items():
 
-        if 'type' not in v:  # webargs param is "Field" for example, when output is dict of dicts
-            tmp = gr.outputs.Textbox(type='str',
-                                     label=k)
+        # Sometimes peoples use webargs.Field() when the value does not fit other
+        # categories (eg. dict of dicts)
+        # In those cases return a string with the value
+        if 'type' not in v:
+            tmp = gr.Textbox(
+                type='text',
+                label=k,
+                )
 
-        elif k in ['labels', 'probabilities']:  # FIXME: remove in the future, see below
+        elif k in ['labels', 'probabilities']: # processed below
             continue
 
         elif v['type'] in ['string', 'boolean']:
 
-            # Check if it is media files (encoded in base64)
+            # Check if it is a media file (encoded in base64)
             desc = v.get('description', '').lower()
             if 'image' in desc:
-                tmp = gr.outputs.Image(type='file',
-                                       label=k)
+                tmp = gr.Image(
+                    type='filepath',
+                    label=k,
+                    )
             elif 'audio' in desc:
-                tmp = gr.outputs.Audio(type='file',
-                                       label=k)
+                tmp = gr.Audio(
+                    type='filepath',
+                    label=k,
+                    )
             elif 'video' in desc:
-                tmp = gr.outputs.Video(type='mp4',
-                                       label=k)
-            # Normal string
+                tmp = gr.Video(
+                    label=k,
+                    )
+
+            # Otherwise return normal string
             else:
-                tmp = gr.outputs.Textbox(type='str',
-                                         label=k)
+                tmp = gr.Textbox(
+                    type='text',
+                    label=k,
+                    )
 
         elif v['type'] in ['integer', 'number']:
-            tmp = gr.outputs.Textbox(type='number',
-                                     label=k)
+            tmp = gr.Number(
+                label=k,
+                )
         elif v['type'] in ['array']:
-            tmp = gr.outputs.Textbox(type='str',
-                                     label=k)
+            tmp = gr.Textbox(
+                label=k,
+                )
         elif v['type'] in ['object']:
-            tmp = gr.outputs.JSON(label=k)
+            tmp = gr.JSON(label=k)
         else:
             raise Exception(f"UI does not support some of the output data types: {k} [{v['type']}]")
 
@@ -145,13 +171,108 @@ def api2gr_outputs(struct):
     # Interpret 'labels'/'predictions' keys as classification
     # FIXME: this hardcoded approach should be deprecated with DEEPaaS V3 (¿in favour of custom types?)
     # --> maybe can be fixed using 'description' in marshmallow fields
-    if {'labels', 'probabilities'}.issubset(struct.keys()):
-        tmp = gr.outputs.Label(num_top_classes=5,
-                               type='confidences',
-                               label='classification scores')
+    if {'labels', 'probabilities'}.issubset(api_out.keys()):
+        tmp = gr.Label(
+            num_top_classes=5,
+            label='classification scores',
+            )
         gr_out.append(tmp)
 
     return gr_out
+
+
+def api_call(
+    *user_args: tuple,  # Gradio input args, introduced by user
+    api_inp: list,  # input args expected by DEEPaaS
+    gr_out: list, # output args expected by DEEPaaS
+    url: str,  # DEEPaaS predict endpoint
+    mime: str,  # MIME of the call
+    schema: bool,  # whether the module has defined a schema for output validation
+    ):
+
+    # Fill the params/files of the call
+    params, files = {}, {}
+    for k, v in enumerate(user_args):
+
+        inp_name = api_inp[k]['name']
+        inp_type = api_inp[k]['type']
+
+        # If needed, preprocess Gradio inputs to deepaas-friendly format
+        if inp_type == 'integer':
+            v = int(v)
+        elif inp_type == 'array' and isinstance(v, str):
+            v = json.loads(f'[{v}]')
+
+        # Decide whether to add the args to "params" or "files"
+        if inp_type == 'file':
+            files[inp_name] = open(v, 'rb')
+        else:
+            params[inp_name] = v
+
+    # We also send accept as a param in case the module does different post
+    # processing based on this parameter.
+    # Accept is hardcoded because the user does not get to choose it.
+    headers = {'accept': mime}
+    params['accept'] = mime
+
+    r = sess.post(
+        url=url,
+        headers=headers,
+        params=params,
+        files=files,
+        verify=False,
+        )
+
+    # Post processing of the output to Gradio-friendly format
+    if mime == 'application/json':
+        rc = r.content.decode("utf-8")
+
+        if r.status_code != 200:
+            raise Exception(rc)
+
+        rc = json.loads(rc)
+
+        # If schema is provided, reorder outputs in Gradio's expected order
+        # and format outputs (if needed)
+        if schema:
+            rout = []
+            for arg in gr_out:
+                label = arg.label
+
+                # Handle classification outputs
+                if label == 'classification scores':
+                    rout.append(dict(zip(rc['labels'],
+                                        rc['probabilities'])
+                                    )
+                            )
+
+                # Process media files
+                elif isinstance(arg, (gr.Image, gr.Audio, gr.Video)):
+                    media = rc[label].encode('utf-8')  # bytes
+                    media = base64.b64decode(media)  # bytes
+                    with tempfile.NamedTemporaryFile(delete=False) as fp:
+                        fp.write(media)
+                    rout.append(fp.name)
+
+                elif isinstance(arg, gr.Textbox) and arg.type=='str':
+                    # see webargs.Field param
+                    rout.append(str(rc[label]))
+
+                else:
+                    rout.append(rc[label])
+
+        else:
+            # If no schema provided return everything as a JSON
+            rout = rc['predictions']
+
+    else:
+        # Process non-json responses: save to file and return path
+        ftype = find_filetype(mime)
+        with tempfile.NamedTemporaryFile(suffix=f".{ftype}", delete=False) as fp:
+            fp.write(r.content)
+        rout = fp.name
+
+    return rout
 
 
 def generate_footer(metadata):
@@ -160,9 +281,9 @@ def generate_footer(metadata):
         <b>Author</b>: {metadata.get('author', '')} <br>
         <b>License</b>: {metadata.get('license', '')} <br>
         <b>Summary</b>: {metadata.get('summary', '')} <br>
-        <a href="https://deep-hybrid-datacloud.eu/">
+        <a href="https://ai4eosc.eu/">
           <div align="center">
-            <img src="https://ai4eosc.eu/wp-content/uploads/sites/10/2022/09/horizontal-transparent.png" alt="logo" width="200"/>
+            <img src="https://ai4eosc.eu/wp-content/uploads/sites/10/2023/01/horizontal-bg-green.png" class="ai4eosc-logo" width="200" />
           </div>
         </a>
     """
