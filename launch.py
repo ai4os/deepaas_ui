@@ -139,6 +139,7 @@ def main(api_url, ui_port):
         server_port=ui_port,
         show_error = True,
         debug=False,
+        favicon_path='./favicon.ico'
     )
 
 

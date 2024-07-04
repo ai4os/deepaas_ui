@@ -48,6 +48,7 @@ python launch.py --api_url http://0.0.0.0:5000/ --ui_port 8000
 > **TODOs**:
 > * ¿make the parsing of the API parameters recursive? (now we parse dtypes for the first level of the json only)
 > * support [annotated image](https://www.gradio.app/docs/gradio/annotatedimage)?
+> * change tab name to "AI4EOSC UI" but this implies [using Blocks](https://github.com/gradio-app/gradio/issues/385#issuecomment-1496307775) which make the code uglier
 
 #### On the Gradio version and compatibility issues
 
