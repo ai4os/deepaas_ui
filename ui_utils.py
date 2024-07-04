@@ -197,6 +197,10 @@ def api_call(
         inp_name = api_inp[k]['name']
         inp_type = api_inp[k]['type']
 
+        # If parameter is empty, don't send anything otherwise the call will fail
+        if not v:
+            continue
+
         # If needed, preprocess Gradio inputs to deepaas-friendly format
         if inp_type == 'integer':
             v = int(v)
@@ -220,7 +224,6 @@ def api_call(
         headers=headers,
         params=params,
         files=files,
-        verify=False,
         )
 
     # Post processing of the output to Gradio-friendly format
@@ -231,6 +234,9 @@ def api_call(
             raise Exception(rc)
 
         rc = json.loads(rc)
+
+        if rc.get('status', '') == 'error':
+           raise Exception(rc['message'])
 
         # If schema is provided, reorder outputs in Gradio's expected order
         # and format outputs (if needed)
