@@ -5,6 +5,7 @@ DURATION="${DURATION:-10m}"
 UI_PORT="${UI_PORT:-8888}"
 
 # Processing video with Gradio requires ffmpeg
+apt-get update
 apt install ffmpeg --yes
 
 git clone -b nomad https://github.com/ai4os/deepaas_ui
