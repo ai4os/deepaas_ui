@@ -39,11 +39,14 @@ def api2gr_inputs(api_inp):
             # do not show the "accept" MIME param in the Gradio interface
             continue
 
+        info = i.get('description', '').split('\n\n')[0]  # the split('\n\n') is used to remove the HTML code that Swagger adds automatically
+
         if 'enum' in i.keys():  # could also be gr.Radio()
             tmp = gr.Dropdown(
                 choices=i['enum'],
                 value=i.get('default', None),
                 label=i['name'],
+                info=info,
                 )
         elif i['type'] in ['integer', 'number']:
             if (i['type'] == 'integer') and {'minimum', 'maximum'}.issubset(i.keys()):
@@ -53,26 +56,31 @@ def api2gr_inputs(api_inp):
                     maximum=i.get('maximum', None),
                     step=1,
                     label=i['name'],
+                    info=info,
                     )
             else:
                 tmp = gr.Number(
                     value=i.get('default', None),
                     label=i['name'],
+                    info=info,
                     )
         elif i['type'] in ['boolean']:
             tmp = gr.Checkbox(
                 value=i.get('default', None),
                 label=i['name'],
+                info=info,
                 )
         elif i['type'] in ['string']:
             tmp = gr.Textbox(
                 value=i.get('default', None),
                 label=i['name'],
+                info=info,
                 )
         elif i['type'] in ['array']:
             tmp = gr.Textbox(
                 value=i.get('default', None),
                 label=i['name'],
+                info=info,
                 )
         elif i['type'] == 'file':
             desc = i.get('description', '').lower()
@@ -103,7 +111,18 @@ def api2gr_inputs(api_inp):
 
         else:
             raise Exception(f"UI does not support some of the input data types: `{i['name']}` :: {i['type']}")
+
+        # Add component to list
         gr_inp.append(tmp)
+
+        # In case of files, the info field is not supported, so we have to add it
+        # as an additional HTML component
+        if i['type'] == 'file':
+            tmp = gr.HTML(
+                value=f'<p style="color: Gray;">{info}</p>',
+                label=f"{i['name']}-info",
+            )
+            gr_inp.append(tmp)
 
     return gr_inp
 
@@ -189,6 +208,17 @@ def api_call(
     mime: str,  # MIME of the call
     schema: bool,  # whether the module has defined a schema for output validation
     ):
+
+    # Remove the info gr.HTML() components that come after files (ugly but unavoidable)
+    # Otherwise the info is passed to deepaas
+    prev_type = ''
+    user_args = list(user_args)
+    for k, v in enumerate(user_args[:]):
+        if prev_type == 'file':
+            user_args.remove(v)
+            prev_type = ''
+        else:
+            prev_type = api_inp[k]['type']
 
     # Fill the params/files of the call
     params, files = {}, {}
