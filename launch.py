@@ -42,6 +42,9 @@ def main(api_url, ui_port):
     pred_paths = [p for p in specs['paths'].keys() if p.endswith('predict/')]
 
     p = pred_paths[0]  # FIXME: we are only interfacing the first model found
+    # Check if a model is found ("deepaas-test" is dummy placeholder model)
+    if '/deepaas-test/' in p:
+        raise Exception('No model could be found.')
     print(f'Parsing {Path(p).parent}')
 
     # Retrieve DEEPaaS input params for predict()
