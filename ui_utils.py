@@ -321,9 +321,12 @@ def api_call(
 
 
 def generate_footer(metadata):
+    author = metadata.get('author', '')
+    if isinstance(author, list):
+        author = ', '.join(author)
     footer = f"""
         <link href="https://use.fontawesome.com/releases/v5.13.0/css/all.css" rel="stylesheet">
-        <b>Author</b>: {metadata.get('author', '')} <br>
+        <b>Author(s)</b>: {author} <br>
         <b>License</b>: {metadata.get('license', '')} <br>
         <b>Summary</b>: {metadata.get('summary', '')} <br>
         <a href="https://ai4eosc.eu/">
