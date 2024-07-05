@@ -25,7 +25,7 @@ import warnings
 import gradio as gr
 
 
-sess = requests.Session()
+session = requests.Session()
 
 
 def api2gr_inputs(api_inp):
@@ -219,7 +219,7 @@ def api_call(
     headers = {'accept': mime}
     params['accept'] = mime
 
-    r = sess.post(
+    r = session.post(
         url=url,
         headers=headers,
         params=params,

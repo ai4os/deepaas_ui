@@ -15,9 +15,10 @@
 # under the License.
 
 import inspect
-from pathlib import Path
-import warnings
 import functools
+from pathlib import Path
+import time
+import warnings
 
 import click
 import gradio as gr
@@ -36,8 +37,21 @@ import ui_utils
 def main(api_url, ui_port):
 
     # Parse api inference inputs/outputs
-    sess = requests.Session()
-    r = sess.get(api_url + 'swagger.json')
+    session = requests.Session()
+
+    # Try to connect several times to DEEPaaS because it might take some time to launch
+    max_retries, i = 10, 0
+    while True:
+        try:
+            r = session.get(url=api_url + 'swagger.json')
+            break
+        except Exception:
+            if i == max_retries:
+                raise Exception("DEEPaaS API not found")
+            else:
+                time.sleep(5)
+                i += 1
+
     specs = r.json()
     pred_paths = [p for p in specs['paths'].keys() if p.endswith('predict/')]
 
@@ -109,7 +123,7 @@ def main(api_url, ui_port):
             )
 
         # Get model metadata
-        r = sess.get(f'{api_url}/{Path(p).parent}/')
+        r = session.get(f'{api_url}/{Path(p).parent}/')
         metadata = r.json()
 
         # Launch Gradio interface
