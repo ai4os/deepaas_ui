@@ -84,7 +84,16 @@ def api2gr_inputs(api_inp):
                 )
         elif i['type'] == 'file':
             desc = i.get('description', '').lower()
-            if 'image' in desc:
+
+            # If more than one file-type is in description (eg. happens in YOLO),
+            # then use a generic file component
+            filetypes = ['image', 'audio', 'video']
+            if sum([ftype in desc for ftype in filetypes]) >= 2:
+                tmp = gr.File(
+                    label=i['name'],
+                    )
+
+            elif 'image' in desc:
                 tmp = gr.Image(
                     type='filepath',
                     label=i['name'],
