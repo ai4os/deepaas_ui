@@ -13,8 +13,22 @@ The motivation is to provide the end user with a friendlier interface than the S
 
 ## Usage
 
-To use it, first you need to run DEEPaaS with a module. If you don't have a module installed, consider running the lightweight [demo_app](https://github.com/ai4os-hub/ai4os-demo-app) to get the feeling of what the UI looks like.
+#### Docker
+Steps:
+1. run an AI module. Modules will (normally) by default launch the DEEPaaS API on port 5000.
+2. retrieve the internal network IP
+3. launch the UI
+
+```bash
+export CONTAINER_ID=$(docker run -ti -d -p 5000:5000 ai4oshub/ai4os-demo-app)
+export DEEPAAS_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $CONTAINER_ID)
+docker run -p 80:80 -e DEEPAAS_IP=$DEEPAAS_IP registry.services.ai4os.eu/ai4os/deepaas_ui
 ```
+
+#### Manual
+
+To use it, first you need to run DEEPaaS with a module. If you don't have a module installed, consider running the lightweight [demo_app](https://github.com/ai4os-hub/ai4os-demo-app) to get the feeling of what the UI looks like.
+```bash
 pip install git+https://github.com/ai4os-hub/ai4os-demo-app.git
 deepaas-run --listen-ip 0.0.0.0 --listen-port 5000
 ```
@@ -28,7 +42,7 @@ python launch.py --api_url http://0.0.0.0:5000/ --ui_port 8000
 
 > ⚠️ **Additional requirements**:
 >
->If your model needs to needs tpm process video as input/oputput, Gradio [needs](https://github.com/gradio-app/gradio/blob/9e0d6774b841ea0420ad5dbaeb516f1ad3b494c2/gradio/processing_utils.py#L907-L933) an [ffmpeg](https://ffmpeg.org/) installation:
+>If your model needs to needs tpm process video as input/output, Gradio [needs](https://github.com/gradio-app/gradio/blob/9e0d6774b841ea0420ad5dbaeb516f1ad3b494c2/gradio/processing_utils.py#L907-L933) an [ffmpeg](https://ffmpeg.org/) installation:
 >```console
 >sudo apt install ffmpeg
 >```
@@ -60,6 +74,25 @@ However this could be fixed starting from version `3.0` through the use of Gradi
 
 Given that, at the time of this decision (July 2024), Python `3.7` has reached it's end of life support, we take the decision to move to Gradio `4.37.2` (compatible with Python `3.8.8`).
 This implies that old modules will no longer be compatible with latest deepaas-ui. We leave nevertheless a backward compatible version just in case (branch `backward-compatible`), though it is _very_ outdated.
+
+#### Nomad job implementation
+
+The DEEPaaS UI is deployed in the platform as a "Try-me" endpoints in PAPI.
+The Nomad job to deploy it can be configured in two ways:
+
+1. Install DEEPaaS UI on top of the user container (that contains DEEPaaS)
+2. Launch the DEEPaaS UI as a sidecar task, in its own container.
+
+Pros and cons:
+- 1) consumes less resources because the resources are shared between the user container and the mode
+- 1) offers less fault-tolerance because we cannot control the environment in which the UI will be running (it depends on the user container)
+- 2) is faster to deploy because we don't have to install anything in the user container. Otherwise we always have install the same packages each time we make a deployment.
+  This is especially important because those are meant to be endpoints for quick tries.
+
+We ended up going with option 2, especially since installing ffmpeg became kind of mandatory.
+For archival purposes, as option 2 was the initial approach, we provide:
+* the [Nomad job](./old-files/nomad.hcl)
+* the [bash script](./old-files/nomad.sh) used to install the UI on top of the user's container
 
 ## Example: demo app
 

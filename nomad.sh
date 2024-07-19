@@ -1,30 +1,14 @@
 #!/bin/bash
-# This is the file that is ran from Nomad, when we launch a "try-it" job from PAPI
 
-DURATION="${DURATION:-10m}"
-UI_PORT="${UI_PORT:-8888}"
+DEEPAAS_URL=${DEEPAAS_IP}:${DEEPAAS_PORT}
 
-# Processing video with Gradio requires ffmpeg
-apt-get update
-apt install ffmpeg --yes
+# Check if we are inside a Nomad job, then replace the URL+PORT with the proper address
+if [ -n "$NOMAD_HOST_ADDR_api" ]; then \
+    export DEEPAAS_URL=$NOMAD_HOST_ADDR_api; \
+fi
 
-git clone -b nomad https://github.com/ai4os/deepaas_ui
-cd deepaas_ui
-
-#  Defaut installation leads to:
-# ```
-# ERROR: Cannot uninstall 'blinker'. It is a distutils installed project and
-# thus we cannot accurately determine which files belong to it which
-# would lead to only a partial uninstall.
-# ```
-# So we need to add the ignore flag.
-# https://stackoverflow.com/questions/53807511/pip-cannot-uninstall-package-it-is-a-distutils-installed-project
-pip install -r requirements.txt --ignore-installed blinker
-
-nohup deep-start --deepaas &
-# sleep 10s to let `deepaas` start before launching the UI
-sleep 10
-# Use timeout to automatically kill the job after a given duration
-# We capture the timeout exit code (124) to return 0 instead, so that the task does not restart (job_type=batch)
-echo "Launching Gradio UI ..."
-timeout ${DURATION} python launch.py --api_url http://0.0.0.0:5000/ --ui_port ${UI_PORT} || [[ $? -eq 124 ]]
+# Use the "-u" flag to show Python print in Docker logs
+# Use "||[...]" to capture the exit code of timeout (124) and return a success code
+timeout $DURATION \
+python -u launch.py --api_url http://${DEEPAAS_URL}/ --ui_port $UI_PORT \
+|| [[ $? -eq 124 ]]
