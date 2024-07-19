@@ -6,6 +6,7 @@
 # DEEPaaS UI
 
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://conventionalcommits.org)
+[![Build image](https://github.com/ai4os/deepaas_ui/actions/workflows/main.yml/badge.svg)](https://github.com/ai4os/deepaas_ui/actions/workflows/main.yml)
 
 This is a simple User Interface over models served through the [DEEPaaS API](https://github.com/indigo-dc/DEEPaaS). It only wraps the `PREDICT` method, for `TRAIN` you still have to go through the DEEPaaS API.
 
