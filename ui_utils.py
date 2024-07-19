@@ -220,14 +220,10 @@ def api_call(
 
     # Remove the info gr.HTML() components that come after files (ugly but unavoidable)
     # Otherwise the info is passed to deepaas
-    prev_type = ''
     user_args = list(user_args)
-    for k, v in enumerate(user_args[:]):
-        if prev_type == 'file':
-            user_args.remove(v)
-            prev_type = ''
-        else:
-            prev_type = api_inp[k]['type']
+    for k, v in enumerate(api_inp):
+        if v['type'] == 'file':
+            del user_args[k+1]  # removes the next component
 
     # Fill the params/files of the call
     params, files = {}, {}
