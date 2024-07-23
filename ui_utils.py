@@ -17,6 +17,8 @@
 import base64
 import inspect
 import json
+import mimetypes
+from pathlib import Path
 import re
 import requests
 import tempfile
@@ -242,9 +244,15 @@ def api_call(
         elif inp_type == 'array' and isinstance(v, str):
             v = json.loads(f'[{v}]')
 
-        # Decide whether to add the args to "params" or "files"
+        # Decide whether to add the arg to "params" or "files"
         if inp_type == 'file':
-            files[inp_name] = open(v, 'rb')
+            # We try to provide the mimetype to the user whenever possible
+            mtype = mimetypes.guess_type(v)[0]
+            if mtype:
+                fname = Path(v).stem
+                files[inp_name] = (fname, open(v, 'rb'), mtype)
+            else:
+                files[inp_name] = open(v, 'rb')
         else:
             params[inp_name] = v
 
