@@ -278,8 +278,10 @@ def api_call(
 
         rc = json.loads(rc)
 
+        # This is probably not very general, only seems implemented in image-classification-tf
+        # (and related modules)  --> remove at some point
         if rc.get('status', '') == 'error':
-           raise Exception(rc['message'])
+            raise Exception(rc['message'])
 
         # If schema is provided, reorder outputs in Gradio's expected order
         # and format outputs (if needed)
@@ -288,27 +290,35 @@ def api_call(
             for arg in gr_out:
                 label = arg.label
 
+                # Even if defined in schema, modules don't return the value.
+                # Swagger does not complain, nor shouldn't we
+                value = rc.get(label, None)
+
                 # Handle classification outputs
                 if label == 'classification scores':
-                    rout.append(dict(zip(rc['labels'],
-                                        rc['probabilities'])
-                                    )
+                    rout.append(
+                        dict(
+                            zip(
+                                rc['labels'],
+                                rc['probabilities']
+                                )
                             )
+                        )
 
                 # Process media files
                 elif isinstance(arg, (gr.Image, gr.Audio, gr.Video)):
-                    media = rc[label].encode('utf-8')  # bytes
+                    media = value.encode('utf-8')  # bytes
                     media = base64.b64decode(media)  # bytes
                     with tempfile.NamedTemporaryFile(delete=False) as fp:
                         fp.write(media)
                     rout.append(fp.name)
 
+                # Make sure generic "webargs.Field" params are strings
                 elif isinstance(arg, gr.Textbox) and arg.type=='str':
-                    # see webargs.Field param
-                    rout.append(str(rc[label]))
+                    rout.append(str(value))
 
                 else:
-                    rout.append(rc[label])
+                    rout.append(value)
 
         else:
             # If no schema provided return everything as a JSON
