@@ -341,8 +341,7 @@ def generate_footer(metadata):
     footer = f"""
         <link href="https://use.fontawesome.com/releases/v5.13.0/css/all.css" rel="stylesheet">
         <b>Author(s)</b>: {author} <br>
-        <b>License</b>: {metadata.get('license', '')} <br>
-        <b>Summary</b>: {metadata.get('summary', '')} <br>
+        <b>Summary</b>: {metadata.get('summary', '')} <br><br><br>
         <a href="https://ai4eosc.eu/">
           <div align="center">
             <img src="https://ai4eosc.eu/wp-content/uploads/sites/10/2023/01/horizontal-bg-green.png" class="ai4eosc-logo" width="200" />
