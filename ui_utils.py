@@ -235,7 +235,8 @@ def api_call(
         inp_type = api_inp[k]['type']
 
         # If parameter is empty, don't send anything otherwise the call will fail
-        if not v:
+        # Add condition for booleans, otherwise v=False wasn't being sent
+        if not v and not isinstance(v, bool):
             continue
 
         # If needed, preprocess Gradio inputs to deepaas-friendly format
