@@ -21,11 +21,14 @@ import mimetypes
 from pathlib import Path
 import re
 import requests
+import subprocess
 import tempfile
 import warnings
 
 import gradio as gr
 
+
+main_path = Path(__file__).parent.absolute()
 
 session = requests.Session()
 
@@ -336,13 +339,35 @@ def api_call(
 
 
 def generate_footer(metadata):
+
+    # Retrieve git info
+    git_commit = subprocess.run(
+        ['git', 'log', '-1', '--format=%H'],
+        stdout=subprocess.PIPE,
+        text=True,
+        cwd=main_path,
+        ).stdout.strip()
+    git_branch = subprocess.run(
+        ['git', 'rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'],
+        stdout=subprocess.PIPE,
+        text=True,
+        cwd=main_path,
+        ).stdout.strip()
+    git_branch = git_branch.split('/')[-1]  # remove the "origin/" part
+
+    version_text = f"deepaas_ui/{git_branch}@{git_commit[:5]}"
+    version_link = f"https://github.com/ai4os/deepaas_ui/tree/{git_commit}"
+
+    # Generate the footer
     author = metadata.get('author', '')
     if isinstance(author, list):
         author = ', '.join(author)
     footer = f"""
         <link href="https://use.fontawesome.com/releases/v5.13.0/css/all.css" rel="stylesheet">
         <b>Author(s)</b>: {author} <br>
-        <b>Summary</b>: {metadata.get('summary', '')} <br><br><br>
+        <b>Summary</b>: {metadata.get('summary', '')} <br>
+        <b>UI version</b>: <a href="{version_link}"><code>{version_text}</code></a> <br>
+        <br><br>
         <a href="https://ai4eosc.eu/">
           <div align="center">
             <img src="https://ai4eosc.eu/wp-content/uploads/sites/10/2023/01/horizontal-bg-green.png" class="ai4eosc-logo" width="200" />
