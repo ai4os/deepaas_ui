@@ -250,7 +250,7 @@ def api_call(
             # We try to provide the mimetype to the user whenever possible
             mtype = mimetypes.guess_type(v)[0]
             if mtype:
-                fname = Path(v).stem
+                fname = Path(v).name
                 files[inp_name] = (fname, open(v, 'rb'), mtype)
             else:
                 files[inp_name] = open(v, 'rb')
