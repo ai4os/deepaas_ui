@@ -137,7 +137,6 @@ def main(api_url, ui_port):
             theme=gr.themes.Default(
                 primary_hue=gr.themes.colors.cyan,
                 ),
-            css=".ai4eosc-logo {border-radius: 10px;}",
             )
 
         interfaces.append(interface)
@@ -156,7 +155,7 @@ def main(api_url, ui_port):
         server_port=ui_port,
         show_error = True,
         debug=False,
-        favicon_path='./favicon.ico'
+        favicon_path='./_static/images/favicon.ico'
     )
 
 

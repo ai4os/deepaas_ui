@@ -18,6 +18,7 @@ import base64
 import inspect
 import json
 import mimetypes
+import os
 from pathlib import Path
 import re
 import requests
@@ -370,6 +371,27 @@ def generate_footer(metadata):
     version_text = f"deepaas_ui/{git_branch}@{git_commit[:5]}"
     version_link = f"https://github.com/ai4os/deepaas_ui/tree/{git_commit}"
 
+    # Get module description
+    description = metadata.get('description', '')
+    if not description:
+        # In old modules, description was named "summary"
+        description = metadata.get('summary', '')
+
+    # Get the appropriate logo (default is "ai4eosc")
+    namespace = os.getenv('NOMAD_NAMESPACE', 'ai4eosc')
+    namespace = namespace if namespace in ['imagine'] else 'ai4eosc'  # other namespace don't have logo
+    homepages = {
+        'ai4eosc': 'https://ai4eosc.eu/',
+        'imagine': 'https://www.imagine-ai.eu/',
+    }
+    logo = f"""
+        <a href="{homepages[namespace]}">
+          <div align="center">
+            <img src="https://raw.githubusercontent.com/ai4os/deepaas_ui/master/_static/images/logo-{namespace}.png" width="200" />
+          </div>
+        </a>
+    """
+
     # Generate the footer
     author = metadata.get('author', '')
     if isinstance(author, list):
@@ -377,14 +399,10 @@ def generate_footer(metadata):
     footer = f"""
         <link href="https://use.fontawesome.com/releases/v5.13.0/css/all.css" rel="stylesheet">
         <b>Author(s)</b>: {author} <br>
-        <b>Summary</b>: {metadata.get('summary', '')} <br>
+        <b>Description:</b>: {metadata.get('summary', '')} <br>
         <b>UI version</b>: <a href="{version_link}"><code>{version_text}</code></a> <br>
         <br><br>
-        <a href="https://ai4eosc.eu/">
-          <div align="center">
-            <img src="https://ai4eosc.eu/wp-content/uploads/sites/10/2023/01/horizontal-bg-green.png" class="ai4eosc-logo" width="200" />
-          </div>
-        </a>
+        {logo}
     """
     footer = inspect.cleandoc(footer)
     return footer

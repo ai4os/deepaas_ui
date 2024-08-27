@@ -99,4 +99,4 @@ For archival purposes, as option 2 was the initial approach, we provide:
 
 All the  best practices can be seen in the [demo_app API implementation](https://github.com/ai4os-hub/ai4os-demo-app/blob/main/ai4os_demo_app/api.py). Here is how the UI looks like (left-hand side are inputs, right-hand side are outputs):
 
-![](demo-ui.png)
+![](./_static/images/demo-ui.png)
