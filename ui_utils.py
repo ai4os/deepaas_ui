@@ -338,6 +338,18 @@ def api_call(
     return rout
 
 
+def generate_header():
+    header = f"""
+    <div style="background-color: #032c80; padding: 10px; border-radius: 10px;">
+        ℹ️ This is a temporary deployment that will automatically delete itself after
+        <b>10 minutes</b>. To access more permanent inference options,
+        <a href="https://docs.ai4eosc.eu/en/latest/user/overview/auth.html" style="color: #76b2de;">become a member of one of the supported projects</a>.
+    </div>
+    """
+    header = inspect.cleandoc(header)
+    return header
+
+
 def generate_footer(metadata):
 
     # Retrieve git info

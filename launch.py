@@ -132,7 +132,7 @@ def main(api_url, ui_port):
             inputs=gr_inp,
             outputs=gr_out,
             title=metadata.get('name', ''),
-            description=inspect.cleandoc(metadata.get('description', '')),
+            description=ui_utils.generate_header(),
             article=ui_utils.generate_footer(metadata),
             theme=gr.themes.Default(
                 primary_hue=gr.themes.colors.cyan,
