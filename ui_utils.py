@@ -399,7 +399,7 @@ def generate_footer(metadata):
     footer = f"""
         <link href="https://use.fontawesome.com/releases/v5.13.0/css/all.css" rel="stylesheet">
         <b>Author(s)</b>: {author} <br>
-        <b>Description:</b>: {metadata.get('summary', '')} <br>
+        <b>Description</b>: {description} <br>
         <b>UI version</b>: <a href="{version_link}"><code>{version_text}</code></a> <br>
         <br><br>
         {logo}
