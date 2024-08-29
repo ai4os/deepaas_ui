@@ -345,6 +345,8 @@ def generate_header():
         ℹ️ This is a temporary deployment that will automatically delete itself after
         <b>10 minutes</b>. To access more permanent inference options,
         <a href="https://docs.ai4eosc.eu/en/latest/user/overview/auth.html" style="color: #76b2de;">become a member of one of the supported projects</a>.
+        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        Take into mind that this deployment runs on <i>limited resources</i>, therefore some resource-hungry functionalities (like processing videos o very big images) might not work as expected.
     </div>
     """
     header = inspect.cleandoc(header)
