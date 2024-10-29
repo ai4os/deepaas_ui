@@ -340,17 +340,20 @@ def api_call(
 
 
 def generate_header():
-    header = f"""
-    <div style="background-color: #032c80; padding: 10px; border-radius: 10px;">
-        ℹ️ This is a temporary deployment that will automatically delete itself after
-        <b>10 minutes</b>. To access more permanent inference options,
-        <a href="https://docs.ai4eosc.eu/en/latest/user/overview/auth.html" style="color: #76b2de;">become a member of one of the supported projects</a>.
-        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        Take into mind that this deployment runs on <i>limited resources</i>, therefore some resource-hungry functionalities (like processing videos o very big images) might not work as expected.
-    </div>
-    """
-    header = inspect.cleandoc(header)
-    return header
+
+    # Only generate a warning header if the job is actually a temporary try-me job
+    job_name = os.getenv('NOMAD_JOB_NAME', '')
+    if job_name.startswith('try-'):
+        header = """
+        <div style="background-color: #032c80; padding: 10px; border-radius: 10px;">
+            ℹ️ This is a temporary deployment that will automatically delete itself after <b>10 minutes</b>. To access more permanent inference options,
+            <a href="https://docs.ai4eosc.eu/en/latest/user/overview/auth.html" style="color: #76b2de;">become a member of one of the supported projects</a>.
+            <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            Take into account that this deployment runs on <i>limited resources</i>, therefore some resource-intensive functionalities (like processing videos or very big images) might not work as expected.
+        </div>
+        """
+        header = inspect.cleandoc(header)
+        return header
 
 
 def generate_footer(metadata):
