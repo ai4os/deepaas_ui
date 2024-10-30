@@ -91,14 +91,16 @@ def api2gr_inputs(api_inp):
         elif i['type'] == 'file':
             desc = i.get('description', '').lower()
 
-            # If more than one file-type is in description (eg. happens in YOLO),
-            # then use a generic file component
+            # See if we render as generic file component
+            # * If more than one file-type is in description (eg. happens in YOLO),
             filetypes = ['image', 'audio', 'video']
-            if sum([ftype in desc for ftype in filetypes]) >= 2:
+            cond1 = sum([ftype in desc for ftype in filetypes]) >= 2
+            # * If user explicitly disables parsing
+            cond2 = '#noparse' in desc
+            if cond1 or cond2:
                 tmp = gr.File(
                     label=i['name'],
                     )
-
             elif 'image' in desc:
                 tmp = gr.Image(
                     type='filepath',
@@ -133,6 +135,7 @@ def api2gr_inputs(api_inp):
         # In case of files, the info field is not supported, so we have to add it
         # as an additional HTML component
         if i['type'] == 'file':
+            info = info.replace('#noparse', '')  # remove the noparse keyword, if present
             tmp = gr.HTML(
                 value=f'<p style="color: Gray;">{info}</p>',
                 label=f"{i['name']}-info",
@@ -165,7 +168,19 @@ def api2gr_outputs(api_out):
 
             # Check if it is a media file (encoded in base64)
             desc = v.get('description', '').lower()
-            if 'image' in desc:
+
+            # See if we render as normal string
+            # * If more than one file-type is in description
+            filetypes = ['image', 'audio', 'video']
+            cond1 = sum([ftype in desc for ftype in filetypes]) >= 2
+            # * If user explicitly disables parsing
+            cond2 = '#noparse' in desc
+            if cond1 or cond2:
+                tmp = gr.Textbox(
+                    type='text',
+                    label=k,
+                    )
+            elif 'image' in desc:
                 tmp = gr.Image(
                     type='filepath',
                     label=k,
