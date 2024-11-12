@@ -1,8 +1,8 @@
 click >= 7.1.2  # dont fix upper version because conflict with typer installed by gradio
 requests >= 2.25.1, < 3.0
 gradio == 4.37.2
-pydantic == 2.7.1
-# Pydantic is installed by Gradio (pydantic>=2.0)
-# it seems that newer versions of Pydantic (2.9.2) throws errors [1] with some modules (eg. corals)
-# So we fix the version till we have more time to debug+update
+fastapi == 0.104.1
+# FastAPI is installed by Gradio
+# it seems that newer versions of fastapi (0.115.4) throw errors [1] with some modules (eg. corals)
+# So we fix the version till we have more time to debug+update (note: update together gradio and fastapi)
 # [1]: pydantic.errors.PydanticSchemaGenerationError: Unable to generate pydantic-core schema for <class 'starlette.requests.Request'>. Set `arbitrary_types_allowed=True` in the model_config to ignore this error or implement `__get_pydantic_core_schema__` on your type to fully support it.
