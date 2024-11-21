@@ -360,11 +360,11 @@ def generate_header():
     job_name = os.getenv('NOMAD_JOB_NAME', '')
     if job_name.startswith('try-'):
         header = """
-        <div style="background-color: #032c80; padding: 10px; border-radius: 10px;">
-            ℹ️ This is a temporary deployment that will automatically delete itself after <b>10 minutes</b>. To access more permanent inference options,
-            <a href="https://docs.ai4eosc.eu/en/latest/user/overview/auth.html" style="color: #76b2de;">become a member of one of the supported projects</a>.
+        <div style="background-color: #032c80; color: #ffffff; padding: 10px; border-radius: 10px;">
+            ℹ️ This is a temporary deployment that will automatically delete itself after <b style="color: #ffffff;">10 minutes</b>. To access more permanent inference options,
+            <a href="https://docs.ai4eosc.eu/en/latest/user/overview/auth.html" style="color: #c2dbed;">become a member of one of the supported projects</a>.
             <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-            Take into account that this deployment runs on <i>limited resources</i>, therefore some resource-intensive functionalities (like processing videos or very big images) might not work as expected.
+            Take into account that this deployment runs on <i style="color: #ffffff;">limited resources</i>, therefore some resource-intensive functionalities (like processing videos or very big images) might not work as expected.
         </div>
         """
         header = inspect.cleandoc(header)
