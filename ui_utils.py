@@ -77,10 +77,12 @@ def api2gr_inputs(api_inp):
                 info=info,
                 )
         elif i['type'] in ['string']:
+            type = 'password' if i.get('format') == 'password' else 'text'
             tmp = gr.Textbox(
                 value=i.get('default', None),
                 label=i['name'],
                 info=info,
+                type=type,
                 )
         elif i['type'] in ['array']:
             tmp = gr.Textbox(
@@ -197,8 +199,9 @@ def api2gr_outputs(api_out):
 
             # Otherwise return normal string
             else:
+                type = 'password' if v.get('format') == 'password' else 'text'
                 tmp = gr.Textbox(
-                    type='text',
+                    type=type,
                     label=k,
                     )
 
