@@ -50,7 +50,7 @@ def api2gr_inputs(api_inp):
         if 'enum' in i.keys():  # could also be gr.Radio()
             tmp = gr.Dropdown(
                 choices=i['enum'],
-                value=i.get('default', None),
+                value=i.get('default', i['enum'][0]),
                 label=i['name'],
                 info=info,
                 )
