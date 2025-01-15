@@ -16,6 +16,7 @@
 
 import inspect
 import functools
+import os
 from pathlib import Path
 import time
 import warnings
@@ -40,7 +41,8 @@ def main(api_url, ui_port):
     session = requests.Session()
 
     # Try to connect several times to DEEPaaS because it might take some time to launch
-    max_retries, i = 10, 0
+    max_retries = os.getenv('MAX_RETRIES', 5)
+    i = 0
     while True:
         try:
             r = session.get(url=api_url + 'swagger.json')

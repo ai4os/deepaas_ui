@@ -10,6 +10,7 @@ ENV DURATION=10m
 ENV DEEPAAS_IP=0.0.0.0
 ENV DEEPAAS_PORT=5000
 ENV UI_PORT=80
+ENV MAX_RETRIES=5
 
 RUN apt-get update && apt-get install -y ffmpeg \
     && rm -rf /var/lib/apt/lists/*
