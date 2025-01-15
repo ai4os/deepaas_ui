@@ -41,13 +41,14 @@ def main(api_url, ui_port):
     session = requests.Session()
 
     # Try to connect several times to DEEPaaS because it might take some time to launch
-    max_retries = os.getenv('MAX_RETRIES', 5)
+    max_retries = int(os.getenv('MAX_RETRIES', 5))
     i = 0
     while True:
         try:
             r = session.get(url=api_url + 'swagger.json')
             break
         except Exception:
+            print(f"Attempt {i} to connect with DEEPaaS")
             if i == max_retries:
                 raise Exception("DEEPaaS API not found")
             else:
