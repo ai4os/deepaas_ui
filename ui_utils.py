@@ -358,16 +358,22 @@ def api_call(
 
 
 def generate_header():
+    # Check if there's a warning message specifying the inference requirements that could
+    # not be met
+    reqs = os.getenv('INFERENCE_WARNING', '')
+    if reqs:
+        reqs = f"Particularly, the module developer specified a number of requirements that could not be met: {reqs}"
 
     # Only generate a warning header if the job is actually a temporary try-me job
     job_name = os.getenv('NOMAD_JOB_NAME', '')
     if job_name.startswith('try-'):
-        header = """
+        header = f"""
         <div style="background-color: #032c80; color: #ffffff; padding: 10px; border-radius: 10px;">
             ℹ️ This is a temporary deployment that will automatically delete itself after <b style="color: #ffffff;">10 minutes</b>. To access more permanent inference options,
             <a href="https://docs.ai4eosc.eu/en/latest/user/overview/auth.html" style="color: #c2dbed;">become a member of one of the supported projects</a>.
             <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
             Take into account that this deployment runs on <i style="color: #ffffff;">limited resources</i>, therefore some resource-intensive functionalities (like processing videos or very big images) might not work as expected.
+            {reqs}
         </div>
         """
         header = inspect.cleandoc(header)
