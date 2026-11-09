@@ -76,6 +76,17 @@ However this could be fixed starting from version `3.0` through the use of Gradi
 Given that, at the time of this decision (July 2024), Python `3.7` has reached it's end of life support, we take the decision to move to Gradio `4.37.2` (compatible with Python `3.8.8`).
 This implies that old modules will no longer be compatible with latest deepaas-ui. We leave nevertheless a backward compatible version just in case (branch `backward-compatible`), though it is _very_ outdated.
 
+#### DEEPaaS versions
+
+DEEPaaS 2.x publishes a Swagger 2.0 specification (`/swagger.json`), whereas DEEPaaS 3.x publishes an OpenAPI 3 specification.
+Both are supported: `spec.py` converts them to the same format before building the Gradio interface.
+The tests in `tests/` check that both versions, serving the [demo app](https://github.com/ai4os-hub/ai4os-demo-app), give the same interface:
+
+```bash
+pip install pytest
+python -m pytest tests
+```
+
 #### Nomad job implementation
 
 The DEEPaaS UI is deployed in the platform as a "Try-me" endpoints in PAPI.
