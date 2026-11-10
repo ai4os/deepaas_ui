@@ -1,0 +1,829 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "Model serving API endpoint",
+  "description": "<img src='https://raw.githubusercontent.com/ai4os/.github/ai4os/profile/horizontal-transparent.png' width=200 alt='' />\n\nThis is a REST API that is focused on providing access to machine learning models. \n\nCurrently you are browsing the [Swagger UI](https://swagger.io/tools/swagger-ui/) for this API, a tool that allows you to visualize and interact with the API and the underlying model.\n- [AI4EOSC Project website](https://ai4eosc.eu).\n- [Project documentation](https://docs.ai4eosc.eu).\n- [API documentation](https://docs.ai4os.eu/deepaas).\n- [AI4EOSC Model marketplace](https://dashboard.cloud.ai4eosc.eu/marketplace).\n",
+  "version": "3.0.0-dev (at /home/user/DEEPaaS)"
+ },
+ "paths": {
+  "/v2/debug/": {
+   "get": {
+    "tags": [
+     "v2",
+     "debug",
+     "debug"
+    ],
+    "summary": "Return debug information if enabled by API.",
+    "description": "Return debug information if enabled by API.",
+    "operationId": "get_v2_debug__get",
+    "responses": {
+     "200": {
+      "description": "Debug information if debug endpoint is enabled",
+      "content": {
+       "text/plain": {
+        "schema": {
+         "type": "string"
+        }
+       }
+      }
+     },
+     "204": {
+      "description": "Debug endpoint not enabled"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/v2/models/": {
+   "get": {
+    "tags": [
+     "v2",
+     "models",
+     "models"
+    ],
+    "summary": "Return loaded models and its information",
+    "description": "Return list of DEEPaaS loaded models. In previous versions, DEEPaaS could load several models and serve them on the same endpoint.",
+    "operationId": "index_models_v2_models__get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ModelList"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/v2/models/ai4os_demo_app/": {
+   "get": {
+    "tags": [
+     "v2",
+     "models",
+     "models"
+    ],
+    "summary": "Return model's metadata",
+    "description": "Return model's metadata.",
+    "operationId": "get_model_ai4os_demo_app_v2_models_ai4os_demo_app__get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ModelMeta"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/v2/models/ai4os_demo_app/predict/": {
+   "post": {
+    "tags": [
+     "v2",
+     "predict",
+     "models",
+     "predict"
+    ],
+    "summary": "Predict",
+    "description": "Make a prediction given the input data.",
+    "operationId": "predict_v2_models_ai4os_demo_app_predict__post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_predict_v2_models_ai4os_demo_app_predict__post"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ModelPredictionResponse"
+        }
+       },
+       "application/zip": {},
+       "image/*": {}
+      }
+     },
+     "406": {
+      "description": "Requested media type not supported"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "parameters": [
+     {
+      "name": "demo_str",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "default": "some-string"
+      },
+      "description": "test string"
+     },
+     {
+      "name": "demo_str_choice",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "default": "choice2",
+       "enum": [
+        "choice1",
+        "choice2"
+       ]
+      },
+      "description": "test multi-choice with strings"
+     },
+     {
+      "name": "demo_password",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "default": "some-string",
+       "format": "password"
+      }
+     },
+     {
+      "name": "demo_int",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "default": 1
+      },
+      "description": "test integer"
+     },
+     {
+      "name": "demo_int_range",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "default": 50,
+       "minimum": 1,
+       "maximum": 100
+      },
+      "description": "test integer is inside a min-max range"
+     },
+     {
+      "name": "demo_float",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "number",
+       "default": 0.1
+      },
+      "description": "test float"
+     },
+     {
+      "name": "demo_bool",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": true
+      },
+      "description": "test boolean"
+     },
+     {
+      "name": "demo_dict",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "default": "{'a': 0, 'b': 1}"
+      },
+      "description": "test dictionary"
+     },
+     {
+      "name": "demo_list_of_floats",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "items": {
+        "type": "number"
+       },
+       "type": "array",
+       "default": [
+        0.1,
+        0.2,
+        0.3
+       ]
+      },
+      "description": "test list of floats"
+     }
+    ]
+   }
+  },
+  "/v2/": {
+   "get": {
+    "tags": [
+     "v2",
+     "version"
+    ],
+    "summary": "Get V2 Version",
+    "operationId": "get_v2_version_v2__get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Versions"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/": {
+   "get": {
+    "tags": [
+     "version"
+    ],
+    "summary": "Get API version information",
+    "operationId": "get_root__get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VersionsAndLinks"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/swagger.json": {
+   "get": {
+    "tags": [
+     "version"
+    ],
+    "summary": "Get OpenAPI schema",
+    "description": "Generate the OpenAPI schema of the application. This is called by FastAPI\ninternally.\n\nThe first time it is called it stores the result in the attribute\n`app.openapi_schema`, and next times it is called, it just returns that same\nresult. To avoid the cost of generating the schema every time.\n\nIf you need to modify the generated OpenAPI schema, you could modify it.\n\nRead more in the\n[FastAPI docs for OpenAPI](https://fastapi.tiangolo.com/how-to/extending-openapi/).",
+    "operationId": "openapi_swagger_json_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "type": "object",
+         "title": "Response Openapi Swagger Json Get"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "Body_predict_v2_models_ai4os_demo_app_predict__post": {
+    "properties": {
+     "demo_image": {
+      "type": "string",
+      "contentMediaType": "application/octet-stream",
+      "title": "Demo Image",
+      "description": "test image upload"
+     },
+     "demo_audio": {
+      "type": "string",
+      "contentMediaType": "application/octet-stream",
+      "title": "Demo Audio",
+      "description": "test audio upload"
+     },
+     "demo_video": {
+      "type": "string",
+      "contentMediaType": "application/octet-stream",
+      "title": "Demo Video",
+      "description": "test video upload"
+     }
+    },
+    "type": "object",
+    "required": [
+     "demo_image",
+     "demo_audio",
+     "demo_video"
+    ],
+    "title": "Body_predict_v2_models_ai4os_demo_app_predict__post"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "Location": {
+    "properties": {
+     "rel": {
+      "type": "string",
+      "title": "Rel"
+     },
+     "href": {
+      "type": "string",
+      "minLength": 1,
+      "format": "uri",
+      "title": "Href"
+     },
+     "type": {
+      "type": "string",
+      "title": "Type",
+      "default": "application/json"
+     }
+    },
+    "type": "object",
+    "required": [
+     "rel",
+     "href"
+    ],
+    "title": "Location"
+   },
+   "ModelList": {
+    "properties": {
+     "models": {
+      "items": {
+       "$ref": "#/components/schemas/ModelMeta"
+      },
+      "type": "array",
+      "title": "Models",
+      "description": "List of loaded models"
+     }
+    },
+    "type": "object",
+    "required": [
+     "models"
+    ],
+    "title": "ModelList"
+   },
+   "ModelMeta": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "title": "Id",
+      "description": "Model identifier"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name",
+      "description": "Model name"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description",
+      "description": "Model description"
+     },
+     "summary": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Summary",
+      "description": "Model summary"
+     },
+     "license": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "License",
+      "description": "Model license"
+     },
+     "author": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Author",
+      "description": "Model author"
+     },
+     "version": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Version",
+      "description": "Model version"
+     },
+     "url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Url",
+      "description": "Model url"
+     },
+     "links": {
+      "items": {
+       "$ref": "#/components/schemas/Location"
+      },
+      "type": "array",
+      "title": "Links",
+      "description": "Model links"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name",
+     "links"
+    ],
+    "title": "ModelMeta",
+    "description": "\"V2 model metadata.\n\nThis class is used to represent the metadata of a model in the V2 API, as we were\ndoing in previous versions."
+   },
+   "ModelPredictionResponse": {
+    "properties": {
+     "demo_str": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "demo_str"
+     },
+     "demo_str_choice": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "demo_str_choice"
+     },
+     "demo_password": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "format": "password",
+      "title": "demo_password"
+     },
+     "demo_int": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "demo_int"
+     },
+     "demo_int_range": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "demo_int_range"
+     },
+     "demo_float": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "demo_float"
+     },
+     "demo_bool": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "demo_bool"
+     },
+     "demo_dict": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "demo_dict"
+     },
+     "demo_list_of_floats": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "demo_list_of_floats"
+     },
+     "demo_image": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "demo_image",
+      "description": "image"
+     },
+     "demo_audio": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "demo_audio",
+      "description": "audio"
+     },
+     "demo_video": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "demo_video",
+      "description": "video"
+     },
+     "labels": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "labels"
+     },
+     "probabilities": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "probabilities"
+     },
+     "accept": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "accept"
+     }
+    },
+    "type": "object",
+    "required": [
+     "demo_str",
+     "demo_str_choice",
+     "demo_password",
+     "demo_int",
+     "demo_int_range",
+     "demo_float",
+     "demo_bool",
+     "demo_dict",
+     "demo_list_of_floats",
+     "demo_image",
+     "demo_audio",
+     "demo_video",
+     "labels",
+     "probabilities",
+     "accept"
+    ],
+    "title": "ModelPredictionResponse"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   },
+   "Version": {
+    "properties": {
+     "version": {
+      "type": "string",
+      "title": "Version"
+     },
+     "id": {
+      "type": "string",
+      "title": "Id"
+     },
+     "type": {
+      "type": "string",
+      "title": "Type",
+      "default": "application/json"
+     }
+    },
+    "type": "object",
+    "required": [
+     "version",
+     "id"
+    ],
+    "title": "Version"
+   },
+   "Versions": {
+    "properties": {
+     "versions": {
+      "items": {
+       "$ref": "#/components/schemas/Version"
+      },
+      "type": "array",
+      "title": "Versions"
+     }
+    },
+    "type": "object",
+    "required": [
+     "versions"
+    ],
+    "title": "Versions"
+   },
+   "VersionsAndLinks": {
+    "properties": {
+     "versions": {
+      "items": {
+       "$ref": "#/components/schemas/Version"
+      },
+      "type": "array",
+      "title": "Versions"
+     },
+     "links": {
+      "items": {
+       "$ref": "#/components/schemas/Location"
+      },
+      "type": "array",
+      "title": "Links"
+     }
+    },
+    "type": "object",
+    "required": [
+     "versions",
+     "links"
+    ],
+    "title": "VersionsAndLinks"
+   }
+  },
+  "securitySchemes": {
+   "HTTPBearer": {
+    "type": "http",
+    "description": "Bearer token, needed if the API has been started with a token.",
+    "scheme": "bearer"
+   }
+  }
+ }
+}

@@ -25,6 +25,7 @@ import click
 import gradio as gr
 import requests
 
+import spec
 import ui_utils
 
 
@@ -55,30 +56,23 @@ def main(api_url, ui_port):
                 time.sleep(5)
                 i += 1
 
-    specs = r.json()
+    # Parse the API specification, supporting both DEEPaaS 2.x (Swagger 2.0)
+    # and DEEPaaS 3.x (OpenAPI 3)
+    specs = spec.parse_spec(r.json())
 
     # Check if a model is found
-    pred_paths = [p for p in specs['paths'].keys() if p.endswith('predict/')]
-    p = pred_paths[0]  # we are only interfacing the first model found
+    p = specs['path']  # we are only interfacing the first model found
     if '/deepaas-test/' in p:  # ignore "deepaas-test" dummy placeholder model
         raise Exception('No model could be found.')
     print(f'Parsing {Path(p).parent}')
 
     # Retrieve DEEPaaS input params for predict()
-    api_inp = specs['paths'][p]['post']['parameters']
-    for i in api_inp:
-        # We default type to string because sometimes modules are not using inputs
-        # correctly (eg. YOLOV8: "classes" param)
-        i['type'] = i.get('type', 'string')
+    api_inp = specs['inputs']
 
-    # Create a Gradio tab for each MIME type
+    # Create a Gradio tab for each MIME type (except the default "*/*")
     interfaces = []
-    mimes = specs['paths'][p]['post']['produces']
+    mimes = specs['mimes']
     for mime in mimes:
-
-        # Ignore default mime "*/*"
-        if mime == '*/*':
-            continue
         print(f"Processing MIME: {mime}")
 
         # Transform deepaas inputs to Gradio
@@ -89,7 +83,9 @@ def main(api_url, ui_port):
         if mime == 'application/json':
             try:
                 # Check if the model has a defined schema
-                api_out = specs['definitions']['ModelPredictionResponse']['properties']
+                api_out = specs['outputs']
+                if api_out is None:
+                    raise Exception('The model does not define a response schema')
                 gr_out = ui_utils.api2gr_outputs(api_out)
                 schema = True
             except Exception:
